@@ -22,17 +22,18 @@ export const register = async (req, res) => {
     if (!hashedPassword) {
       return res.status(500).json({ message: "Error hashing password" });
     }
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       role: role || "seeker",
     });
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
     await newUser.save();
     return res.status(201).json({
       message: "User registered successfully",
