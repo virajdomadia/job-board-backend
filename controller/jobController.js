@@ -30,8 +30,40 @@ const createJob = async (req, res) => {
 
 const getJob = async (req, res) => {
   try {
-    const jobs = await Job.find().populate("employerId", "name email");
-    res.status(200).json({ total: jobs.length, jobs });
+    const { title, company, location, type, minSalary, maxSalary } = req.query;
+
+    let filter = {};
+
+    // Partial text filters (case-insensitive)
+    if (title) {
+      filter.title = { $regex: title, $options: "i" };
+    }
+
+    if (company) {
+      filter.company = { $regex: company, $options: "i" };
+    }
+
+    if (location) {
+      filter.location = { $regex: location, $options: "i" };
+    }
+
+    if (type) {
+      filter.type = type; // exact match for job type
+    }
+
+    // Salary range filter
+    if (minSalary || maxSalary) {
+      filter.salary = {};
+      if (minSalary) filter.salary.$gte = Number(minSalary);
+      if (maxSalary) filter.salary.$lte = Number(maxSalary);
+    }
+
+    const jobs = await Job.find(filter).populate("employerId", "name email");
+
+    res.status(200).json({
+      total: jobs.length,
+      jobs,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
