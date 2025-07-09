@@ -1,16 +1,19 @@
-import Application from "../models/application.js";
-
+import cloudinary from "../utils/cloudinary.js";
+import fs from "fs";
 import Application from "../models/application.js";
 import Job from "../models/job.js";
 
 const applyToJob = async (req, res) => {
   const { jobId, coverLetter } = req.body;
+  const resume = req.file ? req.file.path : null;
+  let cloudUrl = null;
 
   try {
     const job = await Job.findById(jobId);
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
+
     const alreadyApplied = await Application.findOne({
       jobId,
       seekerId: req.user._id,
@@ -21,22 +24,31 @@ const applyToJob = async (req, res) => {
         .status(400)
         .json({ message: "You have already applied for this job" });
     }
-    const resumePath = req.file ? req.file.path : null;
 
-    const newApplication = new Application({
+    // Upload to Cloudinary
+    if (resume) {
+      const result = await cloudinary.uploader.upload(resume, {
+        folder: "jobboard/resumes",
+        resource_type: "auto",
+      });
+      cloudUrl = result.secure_url;
+
+      // Optionally delete local file after uploading
+      fs.unlinkSync(resume);
+    }
+
+    const application = await Application.create({
       jobId,
       seekerId: req.user._id,
       coverLetter,
-      resume: resumePath,
-      status: "Pending",
+      resume: {
+        local: resume,
+        cloud: cloudUrl,
+      },
+      status: "pending",
     });
 
-    const saved = await newApplication.save();
-
-    res.status(201).json({
-      message: "Applied successfully",
-      application: saved,
-    });
+    res.status(201).json({ message: "Application submitted", application });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

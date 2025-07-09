@@ -7,21 +7,12 @@ import {
 } from "../controller/applicationController.js";
 import protect from "../middleware/authMiddleware.js";
 import { isSeeker, isEmployer } from "../middleware/roleMiddleware.js";
-import multer from "multer";
-
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const upload = multer({ storage });
+import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
-router.post("/", protect, isSeeker, upload.single("resume"), applyToJob);
-router.get("/", protect, getAllApplications); // Optional: add role-based access
+router.post("/apply", protect, isSeeker, upload.single("resume"), applyToJob);
+router.get("/", protect, isEmployer, getAllApplications);
 router.get("/me", protect, isSeeker, getMyApplications);
 router.put("/:id/status", protect, isEmployer, updateApplicationStatus);
 

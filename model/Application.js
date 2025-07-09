@@ -22,7 +22,8 @@ const applicationSchema = new mongoose.Schema(
       default: "pending",
     },
     resume: {
-      type: String, // store file path or URL
+      local: { type: String }, // Local file path
+      cloud: { type: String }, // Cloudinary URL
     },
   },
   { timestamps: true }
