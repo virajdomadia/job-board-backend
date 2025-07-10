@@ -6,7 +6,7 @@ import {
   updateJob,
   deleteJob,
 } from "../controller/jobController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import protect from "../middleware/authMiddleware.js";
 import { isEmployer } from "../middleware/roleMiddleware.js";
 import { validateJobPost } from "../validators/jobValidator.js";
 import validate from "../middleware/validate.js";

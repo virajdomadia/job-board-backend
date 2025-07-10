@@ -1,4 +1,4 @@
-import Job from "../models/job.js";
+import Job from "../model/Job.js";
 
 const createJob = async (req, res) => {
   const { title, description, company, location, salary, type } = req.body;

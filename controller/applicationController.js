@@ -1,5 +1,5 @@
-import Application from "../models/application.js";
-import Job from "../models/job.js";
+import Application from "../model/application.js";
+import Job from "../model/Job.js";
 import cloudinary from "../utils/cloudinary.js";
 import sendEmail from "../utils/sendEmail.js";
 import fs from "fs";
@@ -10,7 +10,7 @@ const applyToJob = async (req, res) => {
   let cloudUrl = null;
 
   try {
-    const job = await Job.findById(jobId).populate("postedBy");
+    const job = await Job.findById(jobId).populate("employerId");
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
@@ -49,7 +49,7 @@ const applyToJob = async (req, res) => {
 
     // Get seeker and employer info
     const seeker = req.user;
-    const employer = job.postedBy;
+    const employer = job.employerId;
 
     // ✅ Email to Employer
     if (employer?.email) {
