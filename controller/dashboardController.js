@@ -3,7 +3,7 @@ import Application from "../model/Application.js";
 
 const getEmployerDashboard = async (req, res) => {
   try {
-    const jobs = await Job.find({ postedBy: req.user._id });
+    const jobs = await Job.find({ employerId: req.user._id });
 
     const jobIds = jobs.map((job) => job._id);
 
