@@ -1,4 +1,4 @@
-import Application from "../model/application.js";
+import Application from "../model/Application.js";
 import Job from "../model/Job.js";
 import cloudinary from "../utils/cloudinary.js";
 import sendEmail from "../utils/sendEmail.js";
