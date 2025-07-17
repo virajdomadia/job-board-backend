@@ -65,6 +65,10 @@ const getJob = async (req, res) => {
       if (maxSalary) filter.salary.$lte = Number(maxSalary);
     }
 
+    if (req.user.role === "employer") {
+      filter.employerId = req.user._id;
+    }
+
     // 🧮 Pagination
     const skip = (page - 1) * limit;
 
