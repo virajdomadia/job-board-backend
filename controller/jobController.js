@@ -19,6 +19,7 @@ const createJob = async (req, res) => {
     });
 
     const savedJob = await newJob.save();
+    await savedJob.populate("employerId", "name email");
 
     res
       .status(201)
