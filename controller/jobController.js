@@ -1,7 +1,17 @@
 import Job from "../model/Job.js";
 
+// 📌 Create a New Job
 const createJob = async (req, res) => {
-  const { title, description, company, location, salary, type } = req.body;
+  const {
+    title,
+    description,
+    company,
+    location,
+    salary,
+    type,
+    category,
+    tags,
+  } = req.body;
 
   if (!title || !description || !company || !location || !salary || !type) {
     return res.status(400).json({ message: "All fields are required" });
@@ -15,6 +25,8 @@ const createJob = async (req, res) => {
       location,
       salary,
       type,
+      category,
+      tags,
       employerId: req.user._id,
     });
 
@@ -29,6 +41,7 @@ const createJob = async (req, res) => {
   }
 };
 
+// 📌 Get All Jobs with Filters, Search, Sort, Pagination
 const getJob = async (req, res) => {
   try {
     const {
@@ -36,8 +49,11 @@ const getJob = async (req, res) => {
       company,
       location,
       type,
+      category,
       minSalary,
       maxSalary,
+      tags,
+      search,
       page = 1,
       limit = 10,
       sortBy = "createdAt",
@@ -46,18 +62,23 @@ const getJob = async (req, res) => {
 
     let filter = {};
 
-    // 🔍 Filters
-    if (title) {
-      filter.title = { $regex: title, $options: "i" };
+    // 🔍 Search and Filters
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { company: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
     }
-    if (company) {
-      filter.company = { $regex: company, $options: "i" };
-    }
-    if (location) {
-      filter.location = { $regex: location, $options: "i" };
-    }
-    if (type) {
-      filter.type = type;
+
+    if (title) filter.title = { $regex: title, $options: "i" };
+    if (company) filter.company = { $regex: company, $options: "i" };
+    if (location) filter.location = { $regex: location, $options: "i" };
+    if (type) filter.type = type;
+    if (category) filter.category = category;
+    if (tags) {
+      const tagsArray = tags.split(",");
+      filter.tags = { $in: tagsArray };
     }
 
     if (minSalary || maxSalary) {
@@ -66,14 +87,13 @@ const getJob = async (req, res) => {
       if (maxSalary) filter.salary.$lte = Number(maxSalary);
     }
 
-    if (req.user.role === "employer") {
+    // 👤 Employer-specific jobs
+    if (req.user?.role === "employer") {
       filter.employerId = req.user._id;
     }
 
     // 🧮 Pagination
     const skip = (page - 1) * limit;
-
-    // 🔃 Sorting
     const sortOrder = order === "asc" ? 1 : -1;
 
     const jobs = await Job.find(filter)
@@ -95,6 +115,7 @@ const getJob = async (req, res) => {
   }
 };
 
+// 📌 Get Single Job By ID
 const getJobById = async (req, res) => {
   const { id } = req.params;
 
@@ -114,9 +135,19 @@ const getJobById = async (req, res) => {
   }
 };
 
+// 📌 Update Job
 const updateJob = async (req, res) => {
   const { id } = req.params;
-  const { title, description, company, location, salary, type } = req.body;
+  const {
+    title,
+    description,
+    company,
+    location,
+    salary,
+    type,
+    category,
+    tags,
+  } = req.body;
 
   if (!title || !description || !company || !location || !salary || !type) {
     return res.status(400).json({ message: "All fields are required" });
@@ -141,6 +172,8 @@ const updateJob = async (req, res) => {
     jobToUpdate.location = location;
     jobToUpdate.salary = salary;
     jobToUpdate.type = type;
+    jobToUpdate.category = category || jobToUpdate.category;
+    jobToUpdate.tags = tags || jobToUpdate.tags;
 
     const updatedJob = await jobToUpdate.save();
 
@@ -152,6 +185,7 @@ const updateJob = async (req, res) => {
   }
 };
 
+// 📌 Delete Job
 const deleteJob = async (req, res) => {
   const { id } = req.params;
 
