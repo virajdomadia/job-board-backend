@@ -4,6 +4,7 @@ import {
   getAllApplications,
   getMyApplications,
   updateApplicationStatus,
+  checkIfApplied,
 } from "../controller/applicationController.js";
 import protect from "../middleware/authMiddleware.js";
 import { isSeeker, isEmployer } from "../middleware/roleMiddleware.js";
@@ -25,5 +26,6 @@ router.post(
 router.get("/", protect, isEmployer, getAllApplications);
 router.get("/me", protect, isSeeker, getMyApplications);
 router.put("/:id/status", protect, isEmployer, updateApplicationStatus);
+router.get("/check/:jobId", protect, isSeeker, checkIfApplied);
 
 export default router;

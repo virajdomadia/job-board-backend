@@ -140,9 +140,25 @@ const updateApplicationStatus = async (req, res) => {
   }
 };
 
+const checkIfApplied = async (req, res) => {
+  const { jobId } = req.params;
+
+  try {
+    const existing = await Application.findOne({
+      jobId,
+      seekerId: req.user._id,
+    });
+
+    res.status(200).json({ alreadyApplied: !!existing });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 export {
   applyToJob,
   getAllApplications,
   getMyApplications,
   updateApplicationStatus,
+  checkIfApplied,
 };
