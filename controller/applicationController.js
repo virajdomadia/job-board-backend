@@ -11,61 +11,46 @@ const applyToJob = async (req, res) => {
 
   try {
     const job = await Job.findById(jobId).populate("employerId");
-    if (!job) {
-      return res.status(404).json({ message: "Job not found" });
-    }
+    if (!job) return res.status(404).json({ message: "Job not found" });
 
     const alreadyApplied = await Application.findOne({
       jobId,
       seekerId: req.user._id,
     });
+    if (alreadyApplied)
+      return res.status(400).json({ message: "Already applied to this job" });
 
-    if (alreadyApplied) {
-      return res
-        .status(400)
-        .json({ message: "You have already applied for this job" });
-    }
-
-    // Upload to Cloudinary
     if (resume) {
       const result = await cloudinary.uploader.upload(resume, {
         folder: "jobboard/resumes",
-        resource_type: "auto",
+        resource_type: "raw", // ✅ FIX: ensure PDF uploads properly
       });
       cloudUrl = result.secure_url;
-      fs.unlinkSync(resume); // Remove local file
+      fs.unlinkSync(resume); // Clean up local file
     }
 
     const application = await Application.create({
       jobId,
       seekerId: req.user._id,
       coverLetter,
-      resume: {
-        local: resume,
-        cloud: cloudUrl,
-      },
-      status: "pending",
+      resume: { local: resume, cloud: cloudUrl },
     });
 
-    // Get seeker and employer info
-    const seeker = req.user;
-    const employer = job.employerId;
-
-    // ✅ Email to Employer
-    if (employer?.email) {
+    // Email to Employer
+    if (job.employerId?.email) {
       await sendEmail({
-        to: employer.email,
-        subject: `New Application for "${job.title}"`,
-        text: `Hi ${employer.name},\n\n${seeker.name} has applied for your job: "${job.title}".\n\nLogin to view the resume.\n`,
+        to: job.employerId.email,
+        subject: `New Application: "${job.title}"`,
+        text: `Hi ${job.employerId.name},\n\n${req.user.name} has applied for "${job.title}".\nLog in to view the application.`,
       });
     }
 
-    // ✅ Email to Seeker
-    if (seeker?.email) {
+    // Email to Seeker
+    if (req.user?.email) {
       await sendEmail({
-        to: seeker.email,
-        subject: `You applied for "${job.title}"`,
-        text: `Hi ${seeker.name},\n\nYour application for "${job.title}" has been submitted successfully.\n\nWe'll notify you when the employer reviews it.\n`,
+        to: req.user.email,
+        subject: `Application submitted: "${job.title}"`,
+        text: `Hi ${req.user.name},\n\nYou've applied for "${job.title}".\nWe'll notify you of status updates.`,
       });
     }
 
@@ -77,11 +62,14 @@ const applyToJob = async (req, res) => {
 
 const getAllApplications = async (req, res) => {
   try {
-    const apps = await Application.find()
+    const jobs = await Job.find({ employerId: req.user._id }, "_id");
+    const jobIds = jobs.map((j) => j._id);
+
+    const applications = await Application.find({ jobId: { $in: jobIds } })
       .populate("jobId", "title company")
       .populate("seekerId", "name email");
 
-    res.status(200).json({ total: apps.length, applications: apps });
+    res.status(200).json({ total: applications.length, applications });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -89,12 +77,11 @@ const getAllApplications = async (req, res) => {
 
 const getMyApplications = async (req, res) => {
   try {
-    const apps = await Application.find({ seekerId: req.user._id }).populate(
-      "jobId",
-      "title company"
-    );
+    const applications = await Application.find({
+      seekerId: req.user._id,
+    }).populate("jobId", "title company");
 
-    res.status(200).json({ total: apps.length, applications: apps });
+    res.status(200).json({ total: applications.length, applications });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -102,7 +89,7 @@ const getMyApplications = async (req, res) => {
 
 const updateApplicationStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, notes } = req.body;
 
   if (!["pending", "reviewed", "accepted", "rejected"].includes(status)) {
     return res.status(400).json({ message: "Invalid status" });
@@ -118,19 +105,21 @@ const updateApplicationStatus = async (req, res) => {
     }
 
     application.status = status;
+    application.statusUpdatedAt = new Date();
+    if (typeof notes === "string") application.notes = notes;
+
     await application.save();
 
-    // ✅ Send email to seeker
-    const seeker = application.seekerId;
-    const job = application.jobId;
-
-    if (seeker?.email) {
+    // Notify Seeker
+    if (application.seekerId?.email) {
       await sendEmail({
-        to: seeker.email,
-        subject: `Update on your application for "${job.title}"`,
-        text: `Hi ${seeker.name},\n\nYour application for the job "${
-          job.title
-        }" has been updated to: ${status.toUpperCase()}.\n\nPlease log in to your dashboard for more info.\n\nBest,\nJob Board`,
+        to: application.seekerId.email,
+        subject: `Application status updated: "${application.jobId.title}"`,
+        text: `Hi ${application.seekerId.name},\n\nYour application for "${
+          application.jobId.title
+        }" has been marked as ${status.toUpperCase()}.\n\n${
+          notes ? `Notes: ${notes}\n\n` : ""
+        }Please check your dashboard for more info.`,
       });
     }
 

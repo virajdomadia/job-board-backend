@@ -25,9 +25,22 @@ const applicationSchema = new mongoose.Schema(
       local: { type: String }, // Local file path
       cloud: { type: String }, // Cloudinary URL
     },
+    notes: {
+      type: String,
+      default: "",
+    },
+    statusUpdatedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );
+
+// ✅ Indexes for performance
+applicationSchema.index({ jobId: 1 });
+applicationSchema.index({ seekerId: 1 });
+applicationSchema.index({ status: 1 });
 
 export default mongoose.models.Application ||
   mongoose.model("Application", applicationSchema);
